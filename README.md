@@ -16,16 +16,17 @@
 
 ## 🚀 如何运行
 
-1. 下载或克隆本项目到本地：
+1.下载或克隆本项目到本地：
 ```bash
-git clone [https://github.com/hanmenghao61/my-first-spider.git](https://github.com/hanmenghao61/my-first-spider.git)
-安装必备的第三方依赖库：
-
-Bash
+git clone https://github.com/hanmenghao61/my-first-spider.git
+```
+2.安装必备的第三方依赖库：
+```bash
 pip install requests beautifulsoup4
-运行主爬虫脚本：
-
-Bash
+```
+3.运行主爬虫脚本：
+```bash
 python my_spider.py
-⚠️ 免责声明
+```
+# ⚠️ 免责声明
 本项目仅作 Python 爬虫技术学习与交流使用，抓取目标均为专门提供给新手的开源沙盒测试网站（toscrape.com）。
