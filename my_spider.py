@@ -1,57 +1,63 @@
 import requests
 from bs4 import BeautifulSoup
-import os  # 新朋友：用于操作系统的文件和文件夹管理
+import os
+import csv
 import time
 
-# 1. 自动创建一个叫 "book_covers" 的文件夹来存放图片
-folder_name = "book_covers"
-if not os.path.exists(folder_name):
-    os.mkdir(folder_name)
-    print(f"📁 成功创建文件夹: {folder_name}")
+# 1. 初始化准备：创建图片文件夹
+image_folder = "gallery_images"
+if not os.path.exists(image_folder):
+    os.mkdir(image_folder)
 
-# 2. 目标网站（专门用来练手的沙盒书城）
-url = "http://books.toscrape.com/"
-print("正在访问书城首页...")
-response = requests.get(url)
-soup = BeautifulSoup(response.text, "html.parser")
+# 2. 创建并准备好我们的“图文总账本” CSV 文件
+with open('illustrated_quotes.csv', 'w', encoding='utf-8-sig', newline='') as file:
+    writer = csv.writer(file)
+    # 表头增加了【配图本地路径】这一列，实现图文关联
+    writer.writerow(['名言内容', '作者', '艺术配图路径'])
 
-# 3. 找到包含图书信息的模块 
-# 在这个网站里，每本书的信息都被包裹在一个叫 <article class="product_pod"> 的标签里
-books = soup.find_all("article", class_="product_pod")
+    print("第一步：正在前往名言网站抓取文字...")
+    # 抓取 5 条名言
+    quote_url = "http://quotes.toscrape.com/"
+    quote_res = requests.get(quote_url)
+    quote_soup = BeautifulSoup(quote_res.text, "html.parser")
+    quote_blocks = quote_soup.find_all("div", class_="quote")[:5]
 
-print("🚀 开始下载图片...")
+    print("第二步：正在前往书城网站抓取艺术背景图...")
+    # 抓取 5 张图书封面作为配图
+    book_url = "http://books.toscrape.com/"
+    book_res = requests.get(book_url)
+    book_soup = BeautifulSoup(book_res.text, "html.parser")
+    book_blocks = book_soup.find_all("article", class_="product_pod")[:5]
 
-# 4. 为了测试，我们先抓取前 5 本书 (books[:5])
-for book in books[:5]:
-    # 找到 <img> 标签
-    img_tag = book.find("img")
+    print("第三步：开始进行图文配对与下载...")
     
-    # 提取书名（用作图片的文件名），它存在 alt 属性中
-    title = img_tag.get("alt")
-    # 简单清洗一下文件名，防止书名里有特殊标点符号导致电脑保存文件失败
-    safe_title = "".join([c for c in title if c.isalpha() or c.isdigit() or c==' ']).rstrip()
-    
-    # 提取图片的相对链接 (存放在 src 属性中，比如 "media/cache/...")
-    img_url_relative = img_tag.get("src")
-    
-    # ⚠️ 关键步骤：拼接成完整的、能在浏览器里直接打开的图片下载链接
-    img_url_full = "http://books.toscrape.com/" + img_url_relative
-    
-    print(f"正在下载: {safe_title}.jpg")
-    
-    # 5. 向图片的完整链接发送请求，获取图片的二进制数据
-    img_response = requests.get(img_url_full)
-    
-    # 6. 保存图片文件
-    # 拼接出保存路径，比如 "book_covers/A Light in the Attic.jpg"
-    file_path = f"{folder_name}/{safe_title}.jpg"
-    
-    # 'wb' 的意思是 Write Binary（写入二进制），这是保存图片/音频/视频的关键模式！
-    with open(file_path, "wb") as file:
-        # img_response.content 获取到的就是图片的二进制原始数据
-        file.write(img_response.content)
+    # 💡 核心魔法：使用 zip() 函数让名言和图片“齐头并进”一一配对
+    for i, (quote_block, book_block) in enumerate(zip(quote_blocks, book_blocks), start=1):
+        # 提取名言和作者
+        text = quote_block.find("span", class_="text").text
+        author = quote_block.find("small", class_="author").text
         
-    # 礼貌等待 1 秒，保护对方服务器
-    time.sleep(1)
+        # 提取并拼接图片链接
+        img_tag = book_block.find("img")
+        img_url_relative = img_tag.get("src")
+        img_url_full = "http://books.toscrape.com/" + img_url_relative
+        
+        # 制定图片的保存名字，比如 "gallery_images/bg_1.jpg"
+        image_name = f"bg_{i}.jpg"
+        local_image_path = f"{image_folder}/{image_name}"
+        
+        # 下载图片并保存
+        print(f" 正在下载第 {i} 组配图...")
+        img_data = requests.get(img_url_full).content
+        with open(local_image_path, "wb") as img_file:
+            img_file.write(img_data)
+            
+        # 关键的一步：把【文字数据】和【图片在电脑里的路径】一起写进表格
+        writer.writerow([text, author, local_image_path])
+        
+        # 礼貌等待
+        time.sleep(1)
 
-print(f"\n🎉 下载完成！快去你的代码目录下，打开 【{folder_name}】 文件夹看看吧！")
+print("\n🎉 项目大成功！")
+print("1. 【图片】已全部存入 gallery_images 文件夹")
+print("2. 【图文账本】已写入 illustrated_quotes.csv，快用 Excel 打开看看吧！")
